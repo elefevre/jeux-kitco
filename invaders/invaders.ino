@@ -13,25 +13,21 @@ void setup() {
   setContrast(50);
 }
 
+#define ECRAN_ACCUEIL 0
+#define PARTIE 1
+#define ECRAN_FIN_DE_JEU 2
+byte modeJeu = ECRAN_ACCUEIL;
+
 #define NOMBRE_MECHANTS 12
+#define NOMBRE_MECHANTS_HORIZONTAL 4
+#define NOMBRE_MECHANTS_VERTICAL 3
 
 #define LARGEUR_JOUEUR 11
 #define HAUTEUR_JOUEUR 5
 #define LARGEUR_MECHANT 11
 #define HAUTEUR_MECHANT 8
-#define ESPACEMEMENT_HORIZONTAL_MECHANT 13
-#define ESPACEMEMENT_VERTICAL_MECHANT 8
-
-bool modeMechant = false;
-bool jeuTermine = false;
-int temps = 0;
-int tempo = 50;
-bool tirEnCours = false;
-byte xTir = 20;
-byte yTir = 40;
-byte xJoueur = 20;
-byte yJoueur = 43;
-char directionMechants = 1;
+#define ESPACEMENT_HORIZONTAL_MECHANT 13
+#define ESPACEMENT_VERTICAL_MECHANT 8
 
 int xy(byte x, byte y, bool vivant) {
   return (((x << 7) + y) << 1) + (vivant ? 1 : 0);
@@ -49,9 +45,33 @@ bool estVivant(int b) {
   return (b&B01) == 1;
 }
 
-int mechants[] = {xy(0, 0, true), xy(ESPACEMEMENT_HORIZONTAL_MECHANT, 0, true), xy(ESPACEMEMENT_HORIZONTAL_MECHANT*2, 0, true), xy(ESPACEMEMENT_HORIZONTAL_MECHANT*3, 0, true),
-                  xy(0, ESPACEMEMENT_VERTICAL_MECHANT, true), xy(ESPACEMEMENT_HORIZONTAL_MECHANT, ESPACEMEMENT_VERTICAL_MECHANT, true), xy(ESPACEMEMENT_HORIZONTAL_MECHANT*2, ESPACEMEMENT_VERTICAL_MECHANT, true), xy(ESPACEMEMENT_HORIZONTAL_MECHANT*3, ESPACEMEMENT_VERTICAL_MECHANT, true),
-                  xy(0, ESPACEMEMENT_VERTICAL_MECHANT*2, true), xy(ESPACEMEMENT_HORIZONTAL_MECHANT, ESPACEMEMENT_VERTICAL_MECHANT*2, true), xy(ESPACEMEMENT_HORIZONTAL_MECHANT*2, ESPACEMEMENT_VERTICAL_MECHANT*2, true), xy(ESPACEMEMENT_HORIZONTAL_MECHANT*3, ESPACEMEMENT_VERTICAL_MECHANT*2, true),};
+bool modeMechant = false;
+int temps = 0;
+int tempo = 50;
+bool tirEnCours = false;
+byte xTir = 20;
+byte yTir = 40;
+byte xJoueur = 20;
+byte yJoueur = 43;
+char directionMechants = 1;
+int mechants[NOMBRE_MECHANTS_HORIZONTAL][NOMBRE_MECHANTS_VERTICAL];
+
+void demarrer() {
+  modeMechant = false;
+  temps = 0;
+  tempo = 50;
+  tirEnCours = false;
+  xTir = 20;
+  yTir = 40;
+  xJoueur = 20;
+  yJoueur = 43;
+  directionMechants = 1;
+  for (int i = 0; i < NOMBRE_MECHANTS_HORIZONTAL ; i++) {
+    for (int j = 0; j < NOMBRE_MECHANTS_VERTICAL ; j++) {
+      mechants[i][j] = xy(ESPACEMENT_HORIZONTAL_MECHANT * i, ESPACEMENT_VERTICAL_MECHANT * j, true);
+    }
+  }
+}
 
 
 #define WW true
@@ -94,16 +114,16 @@ void ecrireChiffre(int i, byte x, byte y) {
   if (i>=1000) ecrireLettre('0'+(i/1000)%10,x,y,NOIR);
 }
 
-void dessinerMechant(byte n, bool mode) {
-  if (!estVivant(mechants[n])) {
+void dessinerMechant(int mechant, bool mode) {
+  if (!estVivant(mechant)) {
     return;
   }
   for (byte x=0; x < LARGEUR_MECHANT; x++) {
     for (byte y=0; y < HAUTEUR_MECHANT; y++) {
       if (mode) {
-        if (mechantSprite1[x + y*LARGEUR_MECHANT]) setPixel(toX(mechants[n]) + x, toY(mechants[n]) + y);
+        if (mechantSprite1[x + y*LARGEUR_MECHANT]) setPixel(toX(mechant) + x, toY(mechant) + y);
       } else {
-        if (mechantSprite2[x + y*LARGEUR_MECHANT]) setPixel(toX(mechants[n]) + x, toY(mechants[n]) + y);
+        if (mechantSprite2[x + y*LARGEUR_MECHANT]) setPixel(toX(mechant) + x, toY(mechant) + y);
       }
     }
   }
@@ -123,29 +143,32 @@ bool toucheCible(byte x, byte y, byte cibleX, byte cibleY, byte cibleLargeur, by
 
 void finirJeu(const char * texte) {
   ecrireEcran(texte, 20, 20, NOIR);
-  jeuTermine = true;
+  modeJeu = ECRAN_FIN_DE_JEU;
 }
 
 void gererCollisions() {
-  bool mechantsMorts = true;
-  for (int i = 0; i < NOMBRE_MECHANTS; i++) {
-    if (!estVivant(mechants[i])) {
-      continue;
-    }
+  bool tousLesMechantsSontMorts = true;
+  for (int i = 0; i < NOMBRE_MECHANTS_HORIZONTAL ; i++) {
+    for (int j = 0; j < NOMBRE_MECHANTS_VERTICAL ; j++) {
+      int mechant = mechants[i][j];
+      if (!estVivant(mechant)) {
+        continue;
+      }
+      tousLesMechantsSontMorts = false;
 
-    mechantsMorts = false;
+      if (tirEnCours && toucheCible(xTir, yTir, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT)) {
+        mechants[i][j] = xy(0, 0, false);
+        tirEnCours = false;
+      }
 
-    if (tirEnCours && toucheCible(xTir, yTir, toX(mechants[i]), toY(mechants[i]), LARGEUR_MECHANT, HAUTEUR_MECHANT)) {
-      mechants[i] = xy(0, 0, false);
-      tirEnCours = false;
-    }
-    if (toucheCible(xJoueur, yJoueur, toX(mechants[i]), toY(mechants[i]), LARGEUR_MECHANT, HAUTEUR_MECHANT)
-        || toucheCible(xJoueur + LARGEUR_JOUEUR, yJoueur + HAUTEUR_JOUEUR, toX(mechants[i]), toY(mechants[i]), LARGEUR_MECHANT, HAUTEUR_MECHANT)) {
-      finirJeu("PERDU :-(");
+      if (toucheCible(xJoueur, yJoueur, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT)
+          || toucheCible(xJoueur + LARGEUR_JOUEUR, yJoueur + HAUTEUR_JOUEUR, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT)) {
+        finirJeu("PERDU :-(");
+      }
     }
   }
 
-  if (mechantsMorts) {
+  if (tousLesMechantsSontMorts) {
       finirJeu("GAGNE !");
   }
 }
@@ -153,16 +176,19 @@ void gererCollisions() {
 void deplacerMechants() {
   bool toucheLimiteDroite = false;
   bool toucheLimiteGauche = false;
-  for (int i = 0; i < NOMBRE_MECHANTS; i++) {
-    if (!estVivant(mechants[i])) {
-      continue;
-    }
+  for (int i = 0; i < NOMBRE_MECHANTS_HORIZONTAL ; i++) {
+    for (int j = 0; j < NOMBRE_MECHANTS_VERTICAL ; j++) {
+      int mechant = mechants[i][j];
+      if (!estVivant(mechant)) {
+        continue;
+      }
 
-    if (toX(mechants[i]) + LARGEUR_MECHANT == LARGEUR_ECRAN) {
-      if (directionMechants == 1) toucheLimiteDroite = true;
-    }
-    if (toX(mechants[i]) == 0) {
-      if (directionMechants == -1) toucheLimiteGauche = true;
+      if (toX(mechant) + LARGEUR_MECHANT == LARGEUR_ECRAN) {
+        if (directionMechants == 1) toucheLimiteDroite = true;
+      }
+      if (toX(mechant) == 0) {
+        if (directionMechants == -1) toucheLimiteGauche = true;
+      }
     }
   }
 
@@ -178,12 +204,15 @@ void deplacerMechants() {
     }
   }
 
-  for (int i = 0; i < NOMBRE_MECHANTS; i++) {
-    if (!estVivant(mechants[i])) {
-      continue;
-    }
+  for (int i = 0; i < NOMBRE_MECHANTS_HORIZONTAL ; i++) {
+    for (int j = 0; j < NOMBRE_MECHANTS_VERTICAL ; j++) {
+      int mechant = mechants[i][j];
+      if (!estVivant(mechant)) {
+        continue;
+      }
 
-    mechants[i] = xy(toX(mechants[i]) + directionMechants, toY(mechants[i]) + incrementY, true);
+      mechants[i][j] = xy(toX(mechant) + directionMechants, toY(mechant) + incrementY, true);
+    }
   }
 }
 
@@ -201,8 +230,10 @@ void dessiner() {
   if (temps % 1000 == 0) {
     modeMechant = !modeMechant;
   }
-  for (int i = 0; i < NOMBRE_MECHANTS; i++) {
-    dessinerMechant(i, modeMechant);
+  for (int i = 0; i < NOMBRE_MECHANTS_HORIZONTAL ; i++) {
+    for (int j = 0; j < NOMBRE_MECHANTS_VERTICAL ; j++) {
+      dessinerMechant(mechants[i][j], modeMechant);
+    }
   }
 
   dessinerJoueur();
@@ -230,24 +261,41 @@ void gererTouches() {
 }
 
 
-// Loop est la boucle principale, va se lancer en boucle après Setup
 void loop() {
-  if (jeuTermine) return;
+  switch (modeJeu) {
+    case ECRAN_ACCUEIL:
+      effacerEcran(BLANC);
+      ecrireEcran("SPACE", 25, 10, NOIR);
+      ecrireEcran("INVADERS", 15, 20, NOIR);
+      rafraichirEcran();
+      if (touche()) {
+        demarrer();
+        modeJeu = PARTIE;
+      }
+      break;
 
-  temps = temps + tempo;
+    case PARTIE:
+      temps = temps + tempo;
+    
+      effacerEcran(BLANC);
+      deplacerMechants();
+      deplacerTir();
+      dessiner();
+    
+      gererCollisions();
+    
+      rafraichirEcran();
+      gererTouches();
+    
+      delai(tempo);
+      break;
 
-  effacerEcran(BLANC);
-//  ecrireChiffre(toX(mechants[0]), 7, 3);
-//  ecrireChiffre(toX(mechants[1]), 27, 3);
-//  ecrireChiffre(directionMechants, 47, 3);
-  deplacerMechants();
-  deplacerTir();
-  dessiner();
+    case ECRAN_FIN_DE_JEU:
+      if (touche()) {
+        delai(100);
+        modeJeu = ECRAN_ACCUEIL;
+      }
+      break;
 
-  gererCollisions();
-
-  rafraichirEcran();
-  gererTouches();
-
-  delai(tempo);
+  }
 }
