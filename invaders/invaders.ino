@@ -27,7 +27,7 @@ byte modeJeu = ECRAN_ACCUEIL;
 #define HAUTEUR_JOUEUR 5
 #define LARGEUR_MECHANT 11
 #define HAUTEUR_MECHANT 8
-#define LARGEUR_TIR_MECHANT 3
+#define LARGEUR_TIR_MECHANT 2
 #define HAUTEUR_TIR_MECHANT 2
 #define ESPACEMENT_HORIZONTAL_MECHANT 13
 #define ESPACEMENT_VERTICAL_MECHANT 8
@@ -44,12 +44,12 @@ byte toY(int b) {
   return (b&B01111111) >> 1;
 }
 
-bool estVivant(int b) {
+bool estActif(int b) {
   return (b&B01) == 1;
 }
 
 bool modeMechant = false;
-int temps = 0;
+long temps = 0;
 int tempo = 50;
 bool tirEnCours = false;
 byte xTir = 20;
@@ -110,26 +110,25 @@ bool mechantSprite2[] {
 
 bool joueurSprite[] {
   OO, OO, OO, OO, OO, WW, OO, OO, OO, OO, OO,
-  OO, OO, OO, OO, WW, WW, WW, OO, OO, OO, OO,
+  WW, OO, OO, OO, WW, WW, WW, OO, OO, OO, WW,
   WW, WW, WW, WW, WW, WW, WW, WW, WW, WW, WW,
   WW, WW, WW, WW, WW, WW, WW, WW, WW, WW, WW,
-  WW, WW, WW, WW, WW, WW, WW, WW, WW, WW, WW
+  WW, OO, WW, WW, WW, WW, WW, WW, WW, OO, WW
 };
 
-bool tirMechantSprite[HAUTEUR_TIR_MECHANT][LARGEUR_TIR_MECHANT] {
-  {WW, WW, WW},
-  {OO, WW, OO}
+bool tirMechantSprite[] {
+  WW, WW,
+  WW, WW
 };
 
-void ecrireChiffre(int i, byte x, byte y) {
-  ecrireLettre('0'+i%10,x+15,y,NOIR);
-  if (i>=10) ecrireLettre('0'+(i/10)%10,x+10,y,NOIR);
-  if (i>=100) ecrireLettre('0'+(i/100)%10,x+5,y,NOIR);
-  if (i>=1000) ecrireLettre('0'+(i/1000)%10,x,y,NOIR);
+void ecrireChiffre(long i, byte x, byte y) {
+  char buf [6];
+  sprintf (buf, "%03i", i);
+  ecrireEcran(buf, x, y, NOIR);
 }
 
 void dessinerMechant(int mechant, bool mode) {
-  if (!estVivant(mechant)) {
+  if (!estActif(mechant)) {
     return;
   }
   for (byte x=0; x < LARGEUR_MECHANT; x++) {
@@ -144,13 +143,13 @@ void dessinerMechant(int mechant, bool mode) {
 }
 
 void dessinerTirMechant(int tir) {
-  if (!estVivant(tir)) {
+  if (!estActif(tir)) {
     return;
   }
 
   for (byte x=0; x < LARGEUR_TIR_MECHANT; x++) {
     for (byte y=0; y < HAUTEUR_TIR_MECHANT; y++) {
-        if (tirMechantSprite[x][y]) setPixel(toX(tir) + x, toY(tir) + y);
+        if (tirMechantSprite[x + y*LARGEUR_TIR_MECHANT]) setPixel(toX(tir) + x, toY(tir) + y);
     }
   }
 }
@@ -163,25 +162,37 @@ void dessinerJoueur() {
   }
 }
 
-bool toucheCible(byte x, byte y, byte cibleX, byte cibleY, byte cibleLargeur, byte cibleHauteur) {
-  return ( x >= cibleX && x <= cibleX + cibleLargeur && y >= cibleY && y <= cibleY + cibleHauteur);
+bool toucheCible(byte x, byte y, byte cibleX, byte cibleY, byte largeurCible, byte hauteurCible) {
+  return ( x >= cibleX && x <= cibleX + largeurCible && y >= cibleY && y <= cibleY + hauteurCible);
 }
 
 void finirJeu(const char * texte) {
   ecrireEcran(texte, 20, 20, NOIR);
   modeJeu = ECRAN_FIN_DE_JEU;
-  delai(500);
+  temps = 0;
+  while (touche()); // attend que l'utilisateur lache la touche
 }
 
 void gererCollisions() {
   bool tousLesMechantsSontMorts = true;
   for (int i = 0; i < NOMBRE_MECHANTS_HORIZONTAL ; i++) {
     for (int j = 0; j < NOMBRE_MECHANTS_VERTICAL ; j++) {
+      if (estActif(mechants[i][j])) {
+        tousLesMechantsSontMorts = false;
+      }
+    }
+  }
+  if (tousLesMechantsSontMorts) {
+      finirJeu("GAGNE !");
+      return;
+  }
+
+  for (int i = 0; i < NOMBRE_MECHANTS_HORIZONTAL ; i++) {
+    for (int j = 0; j < NOMBRE_MECHANTS_VERTICAL ; j++) {
       int mechant = mechants[i][j];
-      if (!estVivant(mechant)) {
+      if (!estActif(mechant)) {
         continue;
       }
-      tousLesMechantsSontMorts = false;
 
       if (tirEnCours && toucheCible(xTir, yTir, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT)) {
         mechants[i][j] = xy(0, 0, false);
@@ -189,22 +200,24 @@ void gererCollisions() {
       }
 
       if (toucheCible(xJoueur, yJoueur, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT)
-          || toucheCible(xJoueur + LARGEUR_JOUEUR, yJoueur + HAUTEUR_JOUEUR, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT)) {
+          || toucheCible(xJoueur + LARGEUR_JOUEUR, yJoueur + HAUTEUR_JOUEUR, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT)
+          || toucheCible(xJoueur, yJoueur + HAUTEUR_JOUEUR, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT)
+          || toucheCible(xJoueur + LARGEUR_JOUEUR, yJoueur, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT)) {
         finirJeu("PERDU :-(");
       }
     }
   }
-
-  if (tousLesMechantsSontMorts) {
-      finirJeu("GAGNE !");
-  }
   
   for (int i = 0; i < NOMBRE_TIRS_MECHANTS ; i++) {
-    if (!estVivant(tirsMechants[i])) {
+    int tir = tirsMechants[i];
+    if (!estActif(tir)) {
       continue;
     }
-    if (toucheCible(xJoueur, yJoueur, toX(tirsMechants[i]), toY(tirsMechants[i]), LARGEUR_TIR_MECHANT, HAUTEUR_TIR_MECHANT)
-        || toucheCible(xJoueur + LARGEUR_JOUEUR, yJoueur + HAUTEUR_JOUEUR, toX(tirsMechants[i]), toY(tirsMechants[i]), LARGEUR_TIR_MECHANT, HAUTEUR_TIR_MECHANT)) {
+
+    if (   toucheCible(toX(tir), toY(tir), xJoueur, yJoueur, LARGEUR_JOUEUR, HAUTEUR_JOUEUR)
+        || toucheCible(toX(tir) + LARGEUR_TIR_MECHANT, toY(tir) + HAUTEUR_TIR_MECHANT, xJoueur, yJoueur, LARGEUR_JOUEUR, HAUTEUR_JOUEUR)
+        || toucheCible(toX(tir), toY(tir) + HAUTEUR_TIR_MECHANT, xJoueur, yJoueur, LARGEUR_JOUEUR, HAUTEUR_JOUEUR)
+        || toucheCible(toX(tir) + LARGEUR_TIR_MECHANT, toY(tir), xJoueur, yJoueur, LARGEUR_JOUEUR, HAUTEUR_JOUEUR)) {
       finirJeu("PERDU :-(");
     }
   }
@@ -216,7 +229,7 @@ void deplacerMechants() {
   for (int i = 0; i < NOMBRE_MECHANTS_HORIZONTAL ; i++) {
     for (int j = 0; j < NOMBRE_MECHANTS_VERTICAL ; j++) {
       int mechant = mechants[i][j];
-      if (!estVivant(mechant)) {
+      if (!estActif(mechant)) {
         continue;
       }
 
@@ -244,7 +257,7 @@ void deplacerMechants() {
   for (int i = 0; i < NOMBRE_MECHANTS_HORIZONTAL ; i++) {
     for (int j = 0; j < NOMBRE_MECHANTS_VERTICAL ; j++) {
       int mechant = mechants[i][j];
-      if (!estVivant(mechant)) {
+      if (!estActif(mechant)) {
         continue;
       }
 
@@ -255,7 +268,7 @@ void deplacerMechants() {
 
 void deplacerTir() {
   for (int i = 0; i < NOMBRE_TIRS_MECHANTS ; i++) {
-    if (estVivant(tirsMechants[i])) {
+    if (estActif(tirsMechants[i])) {
       if (toY(tirsMechants[i]) + 1 >= HAUTEUR_ECRAN) {
         tirsMechants[i] = xy(0, 0, false);
       } else {
@@ -267,7 +280,7 @@ void deplacerTir() {
   for (int i = 0; i < NOMBRE_MECHANTS_HORIZONTAL ; i++) {
     for (int j = 0; j < NOMBRE_MECHANTS_VERTICAL ; j++) {
       int mechant = mechants[i][j];
-      if (!estVivant(mechant)) {
+      if (!estActif(mechant)) {
         continue;
       }
 
@@ -275,7 +288,7 @@ void deplacerTir() {
       if (unMechantTire < 1) { // 1% de chance qu'un mechant tire
         bool tirLance = false;
         for (int k = 0; k < NOMBRE_TIRS_MECHANTS ; k++) {
-          if (!tirLance && !estVivant(tirsMechants[k])) {
+          if (!tirLance && !estActif(tirsMechants[k])) {
             tirsMechants[k] = xy(toX(mechant) + LARGEUR_MECHANT / 2, toY(mechant) + HAUTEUR_MECHANT, true);
             tirLance = true;
           }
@@ -334,11 +347,19 @@ void gererTouches() {
 void loop() {
   switch (modeJeu) {
     case ECRAN_ACCUEIL:
+      temps = temps + tempo;
+      if (temps % 1000 == 0) {
+        modeMechant = !modeMechant;
+      }
       effacerEcran(BLANC);
+//      ecrireChiffre(temps, 0, 0);
       ecrireEcran("SPACE", 25, 10, NOIR);
       ecrireEcran("INVADERS", 15, 20, NOIR);
+      dessinerMechant(xy(25, 30, true), modeMechant);
+      dessinerMechant(xy(45, 30, true), modeMechant);
       rafraichirEcran();
       if (touche()) {
+        while (touche()); // attend que l'utilisateur lache la touche
         demarrer();
         modeJeu = PARTIE;
       }
@@ -363,6 +384,7 @@ void loop() {
     case ECRAN_FIN_DE_JEU:
       delai(100);
       if (touche()) {
+        while (touche()); // attend que l'utilisateur lache la touche
         modeJeu = ECRAN_ACCUEIL;
       }
       break;
