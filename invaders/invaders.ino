@@ -57,7 +57,7 @@ byte yJoueur = 43;
 char directionMechants = 1;
 int mechants[NOMBRE_MECHANTS_HORIZONTAL][NOMBRE_MECHANTS_VERTICAL];
 int tirsMechants[NOMBRE_TIRS_MECHANTS];
-byte niveau = 0;
+byte niveau = 1;
 #define ANIMATION_MECHANTS 0
 #define DEPLACEMENTS_MECHANTS 1
 #define DEPLACEMENTS_TIRS_MECHANTS 2
@@ -74,15 +74,20 @@ bool timingExpire(byte index) {
   return false;
 }
 
-void demarrer() {
+void demarrer(byte nouveauNiveau) {
+  niveau = nouveauNiveau;
+
   randomSeed(millis());
 
   timings[ANIMATION_MECHANTS] = millis();
   timings[DEPLACEMENTS_MECHANTS] = millis();
   timings[DEPLACEMENTS_TIRS_MECHANTS] = millis();
   timings[DEPLACEMENTS_TIRS_JOUEUR] = millis();
+  tempos[ANIMATION_MECHANTS] = 1000;
+  tempos[DEPLACEMENTS_MECHANTS] = 150 - 30 * niveau;
+  tempos[DEPLACEMENTS_TIRS_MECHANTS] = 200 - 40 * niveau;
+  tempos[DEPLACEMENTS_TIRS_JOUEUR] = 10;
   modeMechant = false;
-  niveau = 0;
   tirEnCours = false;
   xTir = 20;
   yTir = 40;
@@ -199,7 +204,8 @@ void gererCollisions() {
     }
   }
   if (tousLesMechantsSontMorts) {
-      finirJeu("GAGNE !");
+      niveau++;
+      demarrer(niveau);
       return;
   }
 
@@ -372,13 +378,15 @@ void loop() {
       rafraichirEcran();
       if (touche()) {
         while (touche()); // attend que l'utilisateur lache la touche
-        demarrer();
+        demarrer(1);
         modeJeu = PARTIE;
       }
       break;
 
     case PARTIE:
       effacerEcran(BLANC);
+      ecrireEcran("NIVEAU", 0, 0, NOIR);
+      ecrireLettre('0'+niveau%10, 40, 0, NOIR);
       deplacerMechants();
       deplacerTirs();
       dessiner();
