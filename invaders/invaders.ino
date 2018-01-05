@@ -27,7 +27,7 @@ byte modeJeu = ECRAN_ACCUEIL;
 #define HAUTEUR_JOUEUR 5
 #define LARGEUR_MECHANT 11
 #define HAUTEUR_MECHANT 8
-#define LARGEUR_TIR_MECHANT 2
+#define LARGEUR_TIR_MECHANT 1
 #define HAUTEUR_TIR_MECHANT 2
 #define ESPACEMENT_HORIZONTAL_MECHANT 13
 #define ESPACEMENT_VERTICAL_MECHANT 8
@@ -49,8 +49,6 @@ bool estActif(int b) {
 }
 
 bool modeMechant = false;
-long temps = 0;
-int tempo = 50;
 bool tirEnCours = false;
 byte xTir = 20;
 byte yTir = 40;
@@ -59,13 +57,32 @@ byte yJoueur = 43;
 char directionMechants = 1;
 int mechants[NOMBRE_MECHANTS_HORIZONTAL][NOMBRE_MECHANTS_VERTICAL];
 int tirsMechants[NOMBRE_TIRS_MECHANTS];
+byte niveau = 0;
+#define ANIMATION_MECHANTS 0
+#define DEPLACEMENTS_MECHANTS 1
+#define DEPLACEMENTS_TIRS_MECHANTS 2
+#define DEPLACEMENTS_TIRS_JOUEUR 3
+long timings[DEPLACEMENTS_TIRS_JOUEUR + 1];
+long tempos[] = {1000, 150, 200, 10};
+
+
+bool timingExpire(byte index) {
+  if (millis() - timings[index] > tempos[index]) {
+    timings[index] = millis();
+    return true;
+  }
+  return false;
+}
 
 void demarrer() {
   randomSeed(millis());
 
+  timings[ANIMATION_MECHANTS] = millis();
+  timings[DEPLACEMENTS_MECHANTS] = millis();
+  timings[DEPLACEMENTS_TIRS_MECHANTS] = millis();
+  timings[DEPLACEMENTS_TIRS_JOUEUR] = millis();
   modeMechant = false;
-  temps = 0;
-  tempo = 50;
+  niveau = 0;
   tirEnCours = false;
   xTir = 20;
   yTir = 40;
@@ -117,8 +134,8 @@ bool joueurSprite[] {
 };
 
 bool tirMechantSprite[] {
-  WW, WW,
-  WW, WW
+  WW,
+  WW,
 };
 
 void ecrireChiffre(long i, byte x, byte y) {
@@ -169,7 +186,6 @@ bool toucheCible(byte x, byte y, byte cibleX, byte cibleY, byte largeurCible, by
 void finirJeu(const char * texte) {
   ecrireEcran(texte, 20, 20, NOIR);
   modeJeu = ECRAN_FIN_DE_JEU;
-  temps = 0;
   while (touche()); // attend que l'utilisateur lache la touche
 }
 
@@ -224,55 +240,58 @@ void gererCollisions() {
 }
 
 void deplacerMechants() {
-  bool toucheLimiteDroite = false;
-  bool toucheLimiteGauche = false;
-  for (int i = 0; i < NOMBRE_MECHANTS_HORIZONTAL ; i++) {
-    for (int j = 0; j < NOMBRE_MECHANTS_VERTICAL ; j++) {
-      int mechant = mechants[i][j];
-      if (!estActif(mechant)) {
-        continue;
-      }
-
-      if (toX(mechant) + LARGEUR_MECHANT == LARGEUR_ECRAN) {
-        if (directionMechants == 1) toucheLimiteDroite = true;
-      }
-      if (toX(mechant) == 0) {
-        if (directionMechants == -1) toucheLimiteGauche = true;
+  if (timingExpire(DEPLACEMENTS_MECHANTS)) {
+    byte incrementY = 0;  
+    for (int i = 0; i < NOMBRE_MECHANTS_HORIZONTAL ; i++) {
+      for (int j = 0; j < NOMBRE_MECHANTS_VERTICAL ; j++) {
+        int mechant = mechants[i][j];
+        if (!estActif(mechant)) {
+          continue;
+        }
+  
+        if (toX(mechant) + LARGEUR_MECHANT >= LARGEUR_ECRAN && directionMechants > 0) {
+          directionMechants = -1;
+          incrementY = 2;
+        }
+        if (toX(mechant) == 0 && directionMechants < 0) {
+          directionMechants = 1;
+          incrementY = 2;
+        }
       }
     }
-  }
-
-  if (toucheLimiteDroite) directionMechants = -1;
-  if (toucheLimiteGauche) directionMechants = 1;
-  byte incrementY = 0;
-  if (toucheLimiteDroite || toucheLimiteGauche) {
-    incrementY = 2;
-    if (tempo > 5) {
-      tempo = tempo - 5;
-    } else {
-      tempo = 0;
-    }
-  }
-
-  for (int i = 0; i < NOMBRE_MECHANTS_HORIZONTAL ; i++) {
-    for (int j = 0; j < NOMBRE_MECHANTS_VERTICAL ; j++) {
-      int mechant = mechants[i][j];
-      if (!estActif(mechant)) {
-        continue;
+  
+    for (int i = 0; i < NOMBRE_MECHANTS_HORIZONTAL ; i++) {
+      for (int j = 0; j < NOMBRE_MECHANTS_VERTICAL ; j++) {
+        int mechant = mechants[i][j];
+        if (!estActif(mechant)) {
+          continue;
+        }
+  
+        mechants[i][j] = xy(toX(mechant) + directionMechants, toY(mechant) + incrementY, true);
       }
-
-      mechants[i][j] = xy(toX(mechant) + directionMechants, toY(mechant) + incrementY, true);
-    }
+    } 
   }
 }
 
-void deplacerTir() {
-  for (int i = 0; i < NOMBRE_TIRS_MECHANTS ; i++) {
-    if (estActif(tirsMechants[i])) {
-      if (toY(tirsMechants[i]) + 1 >= HAUTEUR_ECRAN) {
-        tirsMechants[i] = xy(0, 0, false);
-      } else {
-        tirsMechants[i] = xy(toX(tirsMechants[i]), toY(tirsMechants[i]) + 1, true);
+void deplacerTirs() {
+  if (timingExpire(DEPLACEMENTS_TIRS_JOUEUR)) {
+    if (tirEnCours) {
+      yTir = yTir - 1;
+    
+      if (yTir == 0) {
+        tirEnCours = false;
+      }
+    }
+  }
+
+  if (timingExpire(DEPLACEMENTS_TIRS_MECHANTS)) {
+    for (int i = 0; i < NOMBRE_TIRS_MECHANTS ; i++) {
+      if (estActif(tirsMechants[i])) {
+        if (toY(tirsMechants[i]) + 1 >= HAUTEUR_ECRAN) {
+          tirsMechants[i] = xy(0, 0, false);
+        } else {
+          tirsMechants[i] = xy(toX(tirsMechants[i]), toY(tirsMechants[i]) + 1, true);
+        }
       }
     }
   }
@@ -284,7 +303,7 @@ void deplacerTir() {
         continue;
       }
 
-      byte unMechantTire=random(0,100);
+      byte unMechantTire=random(0, 100);
       if (unMechantTire < 1) { // 1% de chance qu'un mechant tire
         bool tirLance = false;
         for (int k = 0; k < NOMBRE_TIRS_MECHANTS ; k++) {
@@ -296,25 +315,23 @@ void deplacerTir() {
       }
     }
   }
-  
-  if (!tirEnCours) return;
-
-  yTir = yTir - 1;
-
-  if (yTir == 0) {
-    tirEnCours = false;
-  }
 }
 
-void dessiner() {
-  if (temps % 1000 == 0) {
+void dessinerMechants() {
+  if (timingExpire(ANIMATION_MECHANTS)) {
     modeMechant = !modeMechant;
   }
+
   for (int i = 0; i < NOMBRE_MECHANTS_HORIZONTAL ; i++) {
     for (int j = 0; j < NOMBRE_MECHANTS_VERTICAL ; j++) {
       dessinerMechant(mechants[i][j], modeMechant);
     }
   }
+}
+
+void dessiner() {
+  dessinerMechants();
+
   for (int i = 0; i < NOMBRE_TIRS_MECHANTS ; i++) {
     dessinerTirMechant(tirsMechants[i]);
   }
@@ -343,16 +360,11 @@ void gererTouches() {
   if (xJoueur < 1) xJoueur = 0;
 }
 
-
 void loop() {
   switch (modeJeu) {
     case ECRAN_ACCUEIL:
-      temps = temps + tempo;
-      if (temps % 1000 == 0) {
-        modeMechant = !modeMechant;
-      }
+      if (timingExpire(ANIMATION_MECHANTS)) modeMechant = !modeMechant;
       effacerEcran(BLANC);
-//      ecrireChiffre(temps, 0, 0);
       ecrireEcran("SPACE", 25, 10, NOIR);
       ecrireEcran("INVADERS", 15, 20, NOIR);
       dessinerMechant(xy(25, 30, true), modeMechant);
@@ -366,11 +378,9 @@ void loop() {
       break;
 
     case PARTIE:
-      temps = temps + tempo;
-    
       effacerEcran(BLANC);
       deplacerMechants();
-      deplacerTir();
+      deplacerTirs();
       dessiner();
     
       gererCollisions();
@@ -378,15 +388,13 @@ void loop() {
       rafraichirEcran();
       gererTouches();
     
-      delai(tempo);
+      delai(10);
       break;
 
     case ECRAN_FIN_DE_JEU:
-      delai(100);
-      if (touche()) {
-        while (touche()); // attend que l'utilisateur lache la touche
-        modeJeu = ECRAN_ACCUEIL;
-      }
+      while (!touche()); // attend que l'utilisateur appuie sur une touche
+      while (touche()); // attend que l'utilisateur lache la touche
+      modeJeu = ECRAN_ACCUEIL;
       break;
 
   }
