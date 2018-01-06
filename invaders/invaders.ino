@@ -23,6 +23,8 @@ byte modeJeu = ECRAN_ACCUEIL;
 #define NOMBRE_MECHANTS_HORIZONTAL 4
 #define NOMBRE_MECHANTS_VERTICAL 3
 
+#define LARGEUR_TITRE 8
+#define HAUTEUR_TITRE 22
 #define LARGEUR_JOUEUR 11
 #define HAUTEUR_JOUEUR 5
 #define LARGEUR_MECHANT 11
@@ -62,8 +64,8 @@ byte niveau = 1;
 #define DEPLACEMENTS_MECHANTS 1
 #define DEPLACEMENTS_TIRS_MECHANTS 2
 #define DEPLACEMENTS_TIRS_JOUEUR 3
-long timings[DEPLACEMENTS_TIRS_JOUEUR + 1];
-long tempos[] = {1000, 150, 200, 10};
+long unsigned int timings[] = {millis(), millis(), millis(), millis()};
+long unsigned int tempos[] = {1000, 150, 200, 10};
 
 
 bool timingExpire(byte index) {
@@ -107,6 +109,31 @@ void demarrer(byte nouveauNiveau) {
 
 #define WW true
 #define OO false
+
+byte titre[] {
+B00000000,B00000111,B11001111,B11000111,B11000011,B11100011,B11110000,B00000000,
+B00000000,B00001111,B11101111,B11100111,B11000111,B11110111,B11110000,B00000000,
+B00000000,B00001111,B11101111,B11110111,B11000111,B11110111,B11100000,B00000000,
+B00000000,B00001111,B01110111,B01110111,B11100111,B01110111,B00000000,B00000000,
+B00000000,B00000111,B01110111,B01110111,B11100111,B01110111,B00000000,B00000000,
+B00000000,B00000111,B00000111,B01110110,B11100110,B00001111,B11000000,B00000000,
+B00000000,B00000011,B11110111,B11110110,B11101110,B00001111,B11000000,B00000000,
+B00000000,B00000001,B11110111,B11101110,B11101110,B11101110,B00000000,B00000000,
+B00000000,B00000010,B00111011,B00001111,B11101110,B11101110,B00000000,B00000000,
+B00000000,B00000011,B11111011,B10001110,B01111111,B11101111,B11000000,B00000000,
+B00000000,B00000001,B11110011,B10001110,B01110111,B11011111,B10000000,B00000000,
+B00000000,B00000000,B00000000,B00000000,B00000000,B00000000,B00000000,B00000000,
+B00000000,B00000000,B00000000,B00000000,B00000000,B00000000,B00000000,B00000000,
+B11101110,B11100110,B00111001,B11100011,B11111001,B11111100,B11111100,B01111110,
+B11110111,B01110111,B00111001,B11110011,B11111101,B11111101,B11111110,B11111110,
+B01110111,B11110111,B00111101,B11110011,B10011101,B11000001,B11011101,B11101110,
+B01111011,B10111011,B10111101,B11110011,B10011101,B11000001,B11011101,B11011100,
+B00111011,B11111011,B10111101,B10111011,B10011101,B11111011,B11011101,B11100000,
+B00011101,B11111001,B11011101,B10111011,B10111001,B11110011,B11110001,B11111000,
+B00011101,B11111100,B11011101,B10111011,B10111011,B10000011,B10111000,B00111000,
+B00001110,B11011100,B11111101,B11111011,B10111011,B10000011,B10110011,B01110000,
+B00001110,B11101110,B01111101,B10011111,B11110011,B11110111,B01110011,B11100000
+};
 
 bool mechantSprite1[] {
   OO, OO, WW, OO, OO, OO, OO, OO, WW, OO, OO,
@@ -335,21 +362,25 @@ void dessinerMechants() {
   }
 }
 
-void dessiner() {
-  dessinerMechants();
-
+void dessinerTirs() {
   for (int i = 0; i < NOMBRE_TIRS_MECHANTS ; i++) {
     dessinerTirMechant(tirsMechants[i]);
   }
-
-  dessinerJoueur();
 
   if (tirEnCours) {
     setPixel(xTir, yTir);
   }
 }
 
-void gererTouches() {
+void dessiner() {
+  ecrireLettre('0'+niveau%10, 75, 0, NOIR);
+
+  dessinerMechants();
+  dessinerTirs();
+  dessinerJoueur();
+}
+
+void deplacerJoueur() {
   if (toucheGauche()) {
     xJoueur = xJoueur - 1;
   }
@@ -366,40 +397,45 @@ void gererTouches() {
   if (xJoueur < 1) xJoueur = 0;
 }
 
+byte xTitre = 10;
+byte yTitre = 2;
 void loop() {
   switch (modeJeu) {
     case ECRAN_ACCUEIL:
       if (timingExpire(ANIMATION_MECHANTS)) modeMechant = !modeMechant;
       effacerEcran(BLANC);
-      ecrireEcran("SPACE", 25, 10, NOIR);
-      ecrireEcran("INVADERS", 15, 20, NOIR);
+      for (byte x=0; x < LARGEUR_TITRE; x++) {
+        for (byte y=0; y < HAUTEUR_TITRE; y++) {
+          for (byte i=0; i < 8; i++) {
+            if (titre[x + y * LARGEUR_TITRE] & (B10000000 >> i)) setPixel(xTitre + x * 8 + i, yTitre + y);
+          }
+        }
+      }
       dessinerMechant(xy(25, 30, true), modeMechant);
       dessinerMechant(xy(45, 30, true), modeMechant);
       rafraichirEcran();
       if (touche()) {
-        while (touche()); // attend que l'utilisateur lache la touche
-        demarrer(1);
         modeJeu = PARTIE;
+        demarrer(1);
       }
       break;
 
     case PARTIE:
       effacerEcran(BLANC);
-      ecrireEcran("NIVEAU", 0, 0, NOIR);
-      ecrireLettre('0'+niveau%10, 40, 0, NOIR);
+
       deplacerMechants();
       deplacerTirs();
+      deplacerJoueur();
       dessiner();
-    
       gererCollisions();
     
       rafraichirEcran();
-      gererTouches();
     
       delai(10);
       break;
 
     case ECRAN_FIN_DE_JEU:
+      delai(1000);
       while (!touche()); // attend que l'utilisateur appuie sur une touche
       while (touche()); // attend que l'utilisateur lache la touche
       modeJeu = ECRAN_ACCUEIL;
