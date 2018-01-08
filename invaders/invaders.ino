@@ -1,9 +1,8 @@
-// Programme clignotant LED verte
-// Fait clignoter la LED verte
+// Un mini-Space Invader
+// Développé en janvier 2018 par @elefevre pour la console kitco
 
 // Nécessaire pour l'environnement Kitco
 #include "kitco.h"
-
 
 
 // La partie Setup concerne ce qui va être exécuté au démarrage de Kitco
@@ -177,42 +176,30 @@ byte largeurTableau8Bits(byte largeur) {
   return ceil(largeur / 8.0);
 }
 
-void dessinerMechant(int mechant, bool mode) {
-  if (!estActif(mechant)) return;
-
-  for (byte x=0; x < largeurTableau8Bits(LARGEUR_MECHANT); x++) {
-    for (byte y=0; y < HAUTEUR_MECHANT; y++) {
+void dessinerSprite(byte *pixelsSprite, byte largeurSprite, byte hauteurSprite, byte xSprite, byte ySprite) {
+  for (byte x=0; x < largeurTableau8Bits(largeurSprite); x++) {
+    for (byte y=0; y < hauteurSprite; y++) {
       for (byte i=0; i < 8; i++) {
-        if (mode) {
-          if (mechantSprite1[x + y * largeurTableau8Bits(LARGEUR_MECHANT)] & (B10000000 >> i)) setPixel(toX(mechant) + x * 8 + i, toY(mechant) + y);
-        } else {
-          if (mechantSprite2[x + y * largeurTableau8Bits(LARGEUR_MECHANT)] & (B10000000 >> i)) setPixel(toX(mechant) + x * 8 + i, toY(mechant) + y);
-        }
+        if (pixelsSprite[x + y * largeurTableau8Bits(largeurSprite)] & (B10000000 >> i)) setPixel(xSprite + x * 8 + i, ySprite + y);
       }
     }
+  }
+}
+
+void dessinerMechant(int mechant) {
+  if (estActif(mechant)) {
+    dessinerSprite(modeMechant ? mechantSprite1 : mechantSprite2, LARGEUR_MECHANT, HAUTEUR_MECHANT, toX(mechant), toY(mechant));
   }
 }
 
 void dessinerTirMechant(int tir) {
-  if (!estActif(tir)) return;
-
-  for (byte x=0; x < largeurTableau8Bits(LARGEUR_TIR_MECHANT); x++) {
-    for (byte y=0; y < HAUTEUR_TIR_MECHANT; y++) {
-      for (byte i=0; i < 8; i++) {
-        if (tirMechantSprite[x + y * largeurTableau8Bits(LARGEUR_TIR_MECHANT)] & (B10000000 >> i)) setPixel(toX(tir) + x * 8 + i, toY(tir) + y);
-      }
-    }
+  if (estActif(tir)) {
+    dessinerSprite(tirMechantSprite, LARGEUR_TIR_MECHANT, HAUTEUR_TIR_MECHANT, toX(tir), toY(tir));
   }
 }
 
 void dessinerJoueur() {
-  for (byte x=0; x < largeurTableau8Bits(LARGEUR_JOUEUR); x++) {
-    for (byte y=0; y < HAUTEUR_JOUEUR; y++) {
-      for (byte i=0; i < 8; i++) {
-        if (joueurSprite[x + y * largeurTableau8Bits(LARGEUR_JOUEUR)] & (B10000000 >> i)) setPixel(xJoueur + x * 8 + i, yJoueur + y);
-      }
-    }
-  }
+  dessinerSprite(joueurSprite, LARGEUR_JOUEUR, HAUTEUR_JOUEUR, xJoueur, yJoueur);
 }
 
 bool toucheCible(byte x, byte y, byte cibleX, byte cibleY, byte largeurCible, byte hauteurCible) {
@@ -278,9 +265,7 @@ void deplacerMechants() {
     for (int i = 0; i < NOMBRE_MECHANTS_HORIZONTAL ; i++) {
       for (int j = 0; j < NOMBRE_MECHANTS_VERTICAL ; j++) {
         int mechant = mechants[i][j];
-        if (!estActif(mechant)) {
-          continue;
-        }
+        if (!estActif(mechant)) continue;
   
         if (toX(mechant) + LARGEUR_MECHANT >= LARGEUR_ECRAN && directionMechants > 0) {
           directionMechants = -1;
@@ -353,7 +338,7 @@ void dessinerMechants() {
 
   for (int i = 0; i < NOMBRE_MECHANTS_HORIZONTAL ; i++) {
     for (int j = 0; j < NOMBRE_MECHANTS_VERTICAL ; j++) {
-      dessinerMechant(mechants[i][j], modeMechant);
+      dessinerMechant(mechants[i][j]);
     }
   }
 }
@@ -377,10 +362,10 @@ void dessiner() {
 }
 
 void deplacerJoueur() {
-  if (toucheGauche()) {
+  if (toucheGauche() && xJoueur > 0) {
     xJoueur = xJoueur - 1;
   }
-  if (toucheDroite()) {
+  if (toucheDroite() && xJoueur + LARGEUR_JOUEUR < LARGEUR_ECRAN) {
     xJoueur = xJoueur + 1;
   }
   if (toucheA() && !tirEnCours) {
@@ -389,8 +374,6 @@ void deplacerJoueur() {
     yTir = yJoueur;
   }
 
-  if (xJoueur + LARGEUR_JOUEUR > LARGEUR_ECRAN) xJoueur = LARGEUR_ECRAN - LARGEUR_JOUEUR;
-  if (xJoueur < 1) xJoueur = 0;
 }
 
 byte xTitre = 10;
@@ -400,17 +383,14 @@ void loop() {
     case ECRAN_ACCUEIL:
       if (timingExpire(ANIMATION_MECHANTS)) modeMechant = !modeMechant;
       effacerEcran(BLANC);
-      for (byte x=0; x < largeurTableau8Bits(LARGEUR_TITRE); x++) {
-        for (byte y=0; y < HAUTEUR_TITRE; y++) {
-          for (byte i=0; i < 8; i++) {
-            if (titre[x + y * largeurTableau8Bits(LARGEUR_TITRE)] & (B10000000 >> i)) setPixel(xTitre + x * 8 + i, yTitre + y);
-          }
-        }
-      }
-      dessinerMechant(xy(25, 30, true), modeMechant);
-      dessinerMechant(xy(45, 30, true), modeMechant);
+      dessinerSprite(titre, LARGEUR_TITRE, HAUTEUR_TITRE, xTitre, yTitre);
+      dessinerMechant(xy(25, 30, true));
+      dessinerMechant(xy(45, 30, true));
       rafraichirEcran();
       if (touche()) {
+        // attend que l'utilisateur arrete de presser la touche
+        // pour eviter qu'il tire automatiquement au debut du jeu
+        while(touche());
         modeJeu = PARTIE;
         demarrer(1);
       }
