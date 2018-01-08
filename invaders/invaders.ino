@@ -23,7 +23,7 @@ byte modeJeu = ECRAN_ACCUEIL;
 #define NOMBRE_MECHANTS_HORIZONTAL 4
 #define NOMBRE_MECHANTS_VERTICAL 3
 
-#define LARGEUR_TITRE 8
+#define LARGEUR_TITRE 64
 #define HAUTEUR_TITRE 22
 #define LARGEUR_JOUEUR 11
 #define HAUTEUR_JOUEUR 5
@@ -107,9 +107,6 @@ void demarrer(byte nouveauNiveau) {
 }
 
 
-#define WW true
-#define OO false
-
 byte titre[] {
 B00000000,B00000111,B11001111,B11000111,B11000011,B11100011,B11110000,B00000000,
 B00000000,B00001111,B11101111,B11100111,B11000111,B11110111,B11110000,B00000000,
@@ -135,39 +132,39 @@ B00001110,B11011100,B11111101,B11111011,B10111011,B10000011,B10110011,B01110000,
 B00001110,B11101110,B01111101,B10011111,B11110011,B11110111,B01110011,B11100000
 };
 
-bool mechantSprite1[] {
-  OO, OO, WW, OO, OO, OO, OO, OO, WW, OO, OO,
-  OO, OO, OO, WW, OO, OO, OO, WW, OO, OO, OO,
-  OO, OO, WW, WW, WW, WW, WW, WW, WW, OO, OO,
-  OO, WW, WW, OO, WW, WW, WW, OO, WW, WW, OO,
-  WW, WW, WW, WW, WW, WW, WW, WW, WW, WW, WW,
-  WW, OO, WW, WW, WW, WW, WW, WW, WW, OO, WW,
-  WW, OO, WW, OO, OO, OO, OO, OO, WW, OO, WW,
-  OO, OO, OO, WW, WW, OO, WW, WW, OO, OO, OO
+byte mechantSprite1[] {
+B00100000,B10000000,
+B00010001,B00000000,
+B00111111,B10000000,
+B01101110,B11000000,
+B11111111,B11100000,
+B10111111,B10100000,
+B10100000,B10100000,
+B00011011,B00000000,
 };
 
-bool mechantSprite2[] {
-  OO, OO, WW, OO, OO, OO, OO, OO, WW, OO, OO,
-  WW, OO, OO, WW, OO, OO, OO, WW, OO, OO, WW,
-  WW, OO, WW, WW, WW, WW, WW, WW, WW, OO, WW,
-  WW, WW, WW, OO, WW, WW, WW, OO, WW, WW, WW,
-  WW, WW, WW, WW, WW, WW, WW, WW, WW, WW, WW,
-  OO, OO, WW, WW, WW, WW, WW, WW, WW, OO, OO,
-  OO, OO, WW, OO, OO, OO, OO, OO, WW, OO, OO,
-  OO, WW, OO, OO, OO, OO, OO, OO, OO, WW, OO
+byte mechantSprite2[] {
+B00100000,B10000000,
+B10010001,B00100000,
+B10111111,B10100000,
+B11101110,B11100000,
+B11111111,B11100000,
+B00111111,B10000000,
+B00100000,B10000000,
+B01000000,B01000000
 };
 
-bool joueurSprite[] {
-  OO, OO, OO, OO, OO, WW, OO, OO, OO, OO, OO,
-  WW, OO, OO, OO, WW, WW, WW, OO, OO, OO, WW,
-  WW, WW, WW, WW, WW, WW, WW, WW, WW, WW, WW,
-  WW, WW, WW, WW, WW, WW, WW, WW, WW, WW, WW,
-  WW, OO, WW, WW, WW, WW, WW, WW, WW, OO, WW
+byte joueurSprite[] {
+B00000100,B00000000,
+B10001110,B00100000,
+B11111111,B11100000,
+B11111111,B11100000,
+B10111111,B10100000
 };
 
-bool tirMechantSprite[] {
-  WW,
-  WW,
+byte tirMechantSprite[] {
+B10000000,
+B10000000,
 };
 
 void ecrireChiffre(long i, byte x, byte y) {
@@ -176,37 +173,44 @@ void ecrireChiffre(long i, byte x, byte y) {
   ecrireEcran(buf, x, y, NOIR);
 }
 
+byte largeurTableau8Bits(byte largeur) {
+  return ceil(largeur / 8.0);
+}
+
 void dessinerMechant(int mechant, bool mode) {
-  if (!estActif(mechant)) {
-    return;
-  }
-  for (byte x=0; x < LARGEUR_MECHANT; x++) {
+  if (!estActif(mechant)) return;
+
+  for (byte x=0; x < largeurTableau8Bits(LARGEUR_MECHANT); x++) {
     for (byte y=0; y < HAUTEUR_MECHANT; y++) {
-      if (mode) {
-        if (mechantSprite1[x + y*LARGEUR_MECHANT]) setPixel(toX(mechant) + x, toY(mechant) + y);
-      } else {
-        if (mechantSprite2[x + y*LARGEUR_MECHANT]) setPixel(toX(mechant) + x, toY(mechant) + y);
+      for (byte i=0; i < 8; i++) {
+        if (mode) {
+          if (mechantSprite1[x + y * largeurTableau8Bits(LARGEUR_MECHANT)] & (B10000000 >> i)) setPixel(toX(mechant) + x * 8 + i, toY(mechant) + y);
+        } else {
+          if (mechantSprite2[x + y * largeurTableau8Bits(LARGEUR_MECHANT)] & (B10000000 >> i)) setPixel(toX(mechant) + x * 8 + i, toY(mechant) + y);
+        }
       }
     }
   }
 }
 
 void dessinerTirMechant(int tir) {
-  if (!estActif(tir)) {
-    return;
-  }
+  if (!estActif(tir)) return;
 
-  for (byte x=0; x < LARGEUR_TIR_MECHANT; x++) {
+  for (byte x=0; x < largeurTableau8Bits(LARGEUR_TIR_MECHANT); x++) {
     for (byte y=0; y < HAUTEUR_TIR_MECHANT; y++) {
-        if (tirMechantSprite[x + y*LARGEUR_TIR_MECHANT]) setPixel(toX(tir) + x, toY(tir) + y);
+      for (byte i=0; i < 8; i++) {
+        if (tirMechantSprite[x + y * largeurTableau8Bits(LARGEUR_TIR_MECHANT)] & (B10000000 >> i)) setPixel(toX(tir) + x * 8 + i, toY(tir) + y);
+      }
     }
   }
 }
 
 void dessinerJoueur() {
-  for (byte x=0; x < LARGEUR_JOUEUR; x++) {
+  for (byte x=0; x < largeurTableau8Bits(LARGEUR_JOUEUR); x++) {
     for (byte y=0; y < HAUTEUR_JOUEUR; y++) {
-        if (joueurSprite[x + y*LARGEUR_JOUEUR]) setPixel(xJoueur + x, yJoueur + y);
+      for (byte i=0; i < 8; i++) {
+        if (joueurSprite[x + y * largeurTableau8Bits(LARGEUR_JOUEUR)] & (B10000000 >> i)) setPixel(xJoueur + x * 8 + i, yJoueur + y);
+      }
     }
   }
 }
@@ -239,9 +243,7 @@ void gererCollisions() {
   for (int i = 0; i < NOMBRE_MECHANTS_HORIZONTAL ; i++) {
     for (int j = 0; j < NOMBRE_MECHANTS_VERTICAL ; j++) {
       int mechant = mechants[i][j];
-      if (!estActif(mechant)) {
-        continue;
-      }
+      if (!estActif(mechant)) continue;
 
       if (tirEnCours && toucheCible(xTir, yTir, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT)) {
         mechants[i][j] = xy(0, 0, false);
@@ -259,9 +261,7 @@ void gererCollisions() {
   
   for (int i = 0; i < NOMBRE_TIRS_MECHANTS ; i++) {
     int tir = tirsMechants[i];
-    if (!estActif(tir)) {
-      continue;
-    }
+    if (!estActif(tir)) continue;
 
     if (   toucheCible(toX(tir), toY(tir), xJoueur, yJoueur, LARGEUR_JOUEUR, HAUTEUR_JOUEUR)
         || toucheCible(toX(tir) + LARGEUR_TIR_MECHANT, toY(tir) + HAUTEUR_TIR_MECHANT, xJoueur, yJoueur, LARGEUR_JOUEUR, HAUTEUR_JOUEUR)
@@ -296,9 +296,7 @@ void deplacerMechants() {
     for (int i = 0; i < NOMBRE_MECHANTS_HORIZONTAL ; i++) {
       for (int j = 0; j < NOMBRE_MECHANTS_VERTICAL ; j++) {
         int mechant = mechants[i][j];
-        if (!estActif(mechant)) {
-          continue;
-        }
+        if (!estActif(mechant)) continue;
   
         mechants[i][j] = xy(toX(mechant) + directionMechants, toY(mechant) + incrementY, true);
       }
@@ -332,9 +330,7 @@ void deplacerTirs() {
   for (int i = 0; i < NOMBRE_MECHANTS_HORIZONTAL ; i++) {
     for (int j = 0; j < NOMBRE_MECHANTS_VERTICAL ; j++) {
       int mechant = mechants[i][j];
-      if (!estActif(mechant)) {
-        continue;
-      }
+      if (!estActif(mechant)) continue;
 
       byte unMechantTire=random(0, 100);
       if (unMechantTire < 1) { // 1% de chance qu'un mechant tire
@@ -404,10 +400,10 @@ void loop() {
     case ECRAN_ACCUEIL:
       if (timingExpire(ANIMATION_MECHANTS)) modeMechant = !modeMechant;
       effacerEcran(BLANC);
-      for (byte x=0; x < LARGEUR_TITRE; x++) {
+      for (byte x=0; x < largeurTableau8Bits(LARGEUR_TITRE); x++) {
         for (byte y=0; y < HAUTEUR_TITRE; y++) {
           for (byte i=0; i < 8; i++) {
-            if (titre[x + y * LARGEUR_TITRE] & (B10000000 >> i)) setPixel(xTitre + x * 8 + i, yTitre + y);
+            if (titre[x + y * largeurTableau8Bits(LARGEUR_TITRE)] & (B10000000 >> i)) setPixel(xTitre + x * 8 + i, yTitre + y);
           }
         }
       }
