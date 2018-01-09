@@ -32,9 +32,12 @@ byte modeJeu = ECRAN_ACCUEIL;
 #define HAUTEUR_TIR_MECHANT 2
 #define ESPACEMENT_HORIZONTAL_MECHANT 13
 #define ESPACEMENT_VERTICAL_MECHANT 8
+#define SPRITE_INACTIF 0
 
-int xy(byte x, byte y, bool vivant) {
-  return (((x << 7) + y) << 1) + (vivant ? 1 : 0);
+// retourne la configuration d'un sprite actif
+int xy(byte x, byte y) {
+  // 1 indique que le sprite est actif
+  return (((x << 7) + y) << 1) + 1;
 }
 
 byte toX(int b) {
@@ -97,11 +100,11 @@ void demarrer(byte nouveauNiveau) {
   directionMechants = 1;
   for (int i = 0; i < NOMBRE_MECHANTS_HORIZONTAL ; i++) {
     for (int j = 0; j < NOMBRE_MECHANTS_VERTICAL ; j++) {
-      mechants[i][j] = xy(ESPACEMENT_HORIZONTAL_MECHANT * i, ESPACEMENT_VERTICAL_MECHANT * j, true);
+      mechants[i][j] = xy(ESPACEMENT_HORIZONTAL_MECHANT * i, ESPACEMENT_VERTICAL_MECHANT * j);
     }
   }
   for (int i = 0; i < NOMBRE_TIRS_MECHANTS ; i++) {
-    tirsMechants[i] = xy(0, 0, false);
+    tirsMechants[i] = SPRITE_INACTIF;
   }
 }
 
@@ -233,7 +236,7 @@ void gererCollisions() {
       if (!estActif(mechant)) continue;
 
       if (tirEnCours && toucheCible(xTir, yTir, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT)) {
-        mechants[i][j] = xy(0, 0, false);
+        mechants[i][j] = SPRITE_INACTIF;
         tirEnCours = false;
       }
 
@@ -283,7 +286,7 @@ void deplacerMechants() {
         int mechant = mechants[i][j];
         if (!estActif(mechant)) continue;
   
-        mechants[i][j] = xy(toX(mechant) + directionMechants, toY(mechant) + incrementY, true);
+        mechants[i][j] = xy(toX(mechant) + directionMechants, toY(mechant) + incrementY);
       }
     } 
   }
@@ -304,9 +307,9 @@ void deplacerTirs() {
     for (int i = 0; i < NOMBRE_TIRS_MECHANTS ; i++) {
       if (estActif(tirsMechants[i])) {
         if (toY(tirsMechants[i]) + 1 >= HAUTEUR_ECRAN) {
-          tirsMechants[i] = xy(0, 0, false);
+          tirsMechants[i] = SPRITE_INACTIF;
         } else {
-          tirsMechants[i] = xy(toX(tirsMechants[i]), toY(tirsMechants[i]) + 1, true);
+          tirsMechants[i] = xy(toX(tirsMechants[i]), toY(tirsMechants[i]) + 1);
         }
       }
     }
@@ -322,7 +325,7 @@ void deplacerTirs() {
         bool tirLance = false;
         for (int k = 0; k < NOMBRE_TIRS_MECHANTS ; k++) {
           if (!tirLance && !estActif(tirsMechants[k])) {
-            tirsMechants[k] = xy(toX(mechant) + LARGEUR_MECHANT / 2, toY(mechant) + HAUTEUR_MECHANT, true);
+            tirsMechants[k] = xy(toX(mechant) + LARGEUR_MECHANT / 2, toY(mechant) + HAUTEUR_MECHANT);
             tirLance = true;
           }
         }
@@ -384,8 +387,8 @@ void loop() {
       if (timingExpire(ANIMATION_MECHANTS)) modeMechant = !modeMechant;
       effacerEcran(BLANC);
       dessinerSprite(titre, LARGEUR_TITRE, HAUTEUR_TITRE, xTitre, yTitre);
-      dessinerMechant(xy(25, 30, true));
-      dessinerMechant(xy(45, 30, true));
+      dessinerMechant(xy(25, 30));
+      dessinerMechant(xy(45, 30));
       rafraichirEcran();
       if (touche()) {
         // attend que l'utilisateur arrete de presser la touche
