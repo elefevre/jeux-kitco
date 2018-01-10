@@ -198,6 +198,17 @@ B01010001,B01000000
 }}
 };
 
+byte explosion[] {
+B11000100,B01100000,
+B00110101,B10000000,
+B00000100,B00000000,
+B11100000,B11100000,
+B00000100,B00000000,
+B00110101,B10000000,
+B11000100,B01100000,
+B00000000,B00000000,
+};
+
 byte joueurSprite[] {
 B00000100,B00000000,
 B10001110,B00100000,
@@ -224,14 +235,22 @@ byte largeurTableau8Bits(byte largeur) {
   return ceil(largeur / 8.0);
 }
 
-void dessinerSprite(byte *pixelsSprite, byte largeurSprite, byte hauteurSprite, byte xSprite, byte ySprite) {
+void dessinerSprite(byte *pixelsSprite, byte largeurSprite, byte hauteurSprite, byte xSprite, byte ySprite, bool nb) {
   for (byte x=0; x < largeurTableau8Bits(largeurSprite); x++) {
     for (byte y=0; y < hauteurSprite; y++) {
       for (byte i=0; i < 8; i++) {
-        if (pixelsSprite[x + y * largeurTableau8Bits(largeurSprite)] & (B10000000 >> i)) setPixel(xSprite + x * 8 + i, ySprite + y);
+        if (pixelsSprite[x + y * largeurTableau8Bits(largeurSprite)] & (B10000000 >> i)) setPixel(xSprite + x * 8 + i, ySprite + y, nb);
       }
     }
   }
+}
+
+void dessinerSprite(byte *pixelsSprite, byte largeurSprite, byte hauteurSprite, byte xSprite, byte ySprite) {
+  dessinerSprite(pixelsSprite, largeurSprite, hauteurSprite, xSprite, ySprite, NOIR);
+}
+
+void effacerSprite(byte *pixelsSprite, byte largeurSprite, byte hauteurSprite, byte xSprite, byte ySprite) {
+  dessinerSprite(pixelsSprite, largeurSprite, hauteurSprite, xSprite, ySprite, BLANC);
 }
 
 void dessinerMechant(long mechant) {
@@ -292,7 +311,11 @@ void gererCollisions() {
       long mechant = mechants[i][j];
       if (!estActif(mechant)) continue;
 
-      if (tirEnCours && seTouchent(xTir, yTir, 1, 1, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT )) {
+      if (tirEnCours && seTouchent(xTir, yTir, 1, 1, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT)) {
+        effacerSprite(mechantSprites[toStyle(mechant)][modeMechant], LARGEUR_MECHANT, HAUTEUR_MECHANT, toX(mechant), toY(mechant));
+        dessinerSprite(explosion, LARGEUR_MECHANT, HAUTEUR_MECHANT, toX(mechant), toY(mechant));
+        rafraichirEcran();
+        delai(100);
         mechants[i][j] = SPRITE_INACTIF;
         tirEnCours = false;
       }
