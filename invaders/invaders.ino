@@ -297,7 +297,7 @@ void gererCollisions() {
         tirEnCours = false;
       }
 
-      if (seTouchent(toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT, xJoueur, yJoueur, LARGEUR_JOUEUR, HAUTEUR_JOUEUR)) {
+      if (seTouchent(xJoueur, yJoueur, LARGEUR_JOUEUR, HAUTEUR_JOUEUR, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT)) {
         finirJeu("PERDU :-(");
       }
     }
@@ -307,8 +307,12 @@ void gererCollisions() {
     long tir = tirsMechants[i];
     if (!estActif(tir)) continue;
 
-    if (seTouchent(toX(tir), toY(tir), LARGEUR_TIR_MECHANT, HAUTEUR_TIR_MECHANT, xJoueur, yJoueur, LARGEUR_JOUEUR, HAUTEUR_JOUEUR)) {
+    if (seTouchent(xJoueur, yJoueur, LARGEUR_JOUEUR, HAUTEUR_JOUEUR, toX(tir), toY(tir), LARGEUR_TIR_MECHANT, HAUTEUR_TIR_MECHANT)) {
       finirJeu("PERDU :-(");
+    }
+    if (tirEnCours && seTouchent(xTir, yTir, 1, 1, toX(tir), toY(tir), LARGEUR_TIR_MECHANT, HAUTEUR_TIR_MECHANT)) {
+      tirsMechants[i] = SPRITE_INACTIF;
+      tirEnCours = false;
     }
   }
 }
