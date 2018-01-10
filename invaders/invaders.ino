@@ -247,8 +247,20 @@ void dessinerJoueur() {
   dessinerSprite(joueurSprite, LARGEUR_JOUEUR, HAUTEUR_JOUEUR, xJoueur, yJoueur);
 }
 
-bool toucheCible(byte x, byte y, byte cibleX, byte cibleY, byte largeurCible, byte hauteurCible) {
-  return ( x >= cibleX && x <= cibleX + largeurCible && y >= cibleY && y <= cibleY + hauteurCible);
+// est-ce que 2 segments sur une meme droite se touchent ?
+bool segmentsSeTouchent(byte a, byte longueurA, byte b, byte longueurB) {
+  bool auMoinsUnePartieDeAEstDansB = (a >= b &&  a <= b + longueurB || a + longueurA >= b &&  a + longueurA <= b + longueurB);
+  bool auMoinsUnePartieDeBEstDansA = (b >= a &&  b <= a + longueurA || b + longueurB >= a &&  b + longueurB <= a + longueurA);
+
+  return auMoinsUnePartieDeAEstDansB || auMoinsUnePartieDeBEstDansA;
+}
+
+// est-ce que 2 rectangles se touchent ?
+bool seTouchent(byte x1, byte y1, byte largeur1, byte hauteur1, byte x2, byte y2, byte largeur2, byte hauteur2) {
+  bool lesCoordonneesXDesRectanglesSeTouchent = segmentsSeTouchent(x1, largeur1, x2, largeur2);
+  bool lesCoordonneesYDesRectanglesSeTouchent = segmentsSeTouchent(y1, hauteur1, y2, hauteur2);
+
+  return lesCoordonneesXDesRectanglesSeTouchent && lesCoordonneesYDesRectanglesSeTouchent;
 }
 
 void finirJeu(const char * texte) {
@@ -277,15 +289,12 @@ void gererCollisions() {
       long mechant = mechants[i][j];
       if (!estActif(mechant)) continue;
 
-      if (tirEnCours && toucheCible(xTir, yTir, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT)) {
+      if (tirEnCours && seTouchent(xTir, yTir, 1, 1, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT )) {
         mechants[i][j] = SPRITE_INACTIF;
         tirEnCours = false;
       }
 
-      if (toucheCible(xJoueur, yJoueur, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT)
-          || toucheCible(xJoueur + LARGEUR_JOUEUR, yJoueur + HAUTEUR_JOUEUR, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT)
-          || toucheCible(xJoueur, yJoueur + HAUTEUR_JOUEUR, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT)
-          || toucheCible(xJoueur + LARGEUR_JOUEUR, yJoueur, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT)) {
+      if (seTouchent(toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT, xJoueur, yJoueur, LARGEUR_JOUEUR, HAUTEUR_JOUEUR)) {
         finirJeu("PERDU :-(");
       }
     }
@@ -295,10 +304,7 @@ void gererCollisions() {
     long tir = tirsMechants[i];
     if (!estActif(tir)) continue;
 
-    if (   toucheCible(toX(tir), toY(tir), xJoueur, yJoueur, LARGEUR_JOUEUR, HAUTEUR_JOUEUR)
-        || toucheCible(toX(tir) + LARGEUR_TIR_MECHANT, toY(tir) + HAUTEUR_TIR_MECHANT, xJoueur, yJoueur, LARGEUR_JOUEUR, HAUTEUR_JOUEUR)
-        || toucheCible(toX(tir), toY(tir) + HAUTEUR_TIR_MECHANT, xJoueur, yJoueur, LARGEUR_JOUEUR, HAUTEUR_JOUEUR)
-        || toucheCible(toX(tir) + LARGEUR_TIR_MECHANT, toY(tir), xJoueur, yJoueur, LARGEUR_JOUEUR, HAUTEUR_JOUEUR)) {
+    if (seTouchent(toX(tir), toY(tir), LARGEUR_TIR_MECHANT, HAUTEUR_TIR_MECHANT, xJoueur, yJoueur, LARGEUR_JOUEUR, HAUTEUR_JOUEUR)) {
       finirJeu("PERDU :-(");
     }
   }
