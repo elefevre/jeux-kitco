@@ -26,6 +26,8 @@ byte modeJeu = ECRAN_ACCUEIL;
 #define HAUTEUR_TITRE 22
 #define LARGEUR_JOUEUR 11
 #define HAUTEUR_JOUEUR 5
+#define LARGEUR_EXPLOSION_JOUEUR 16
+#define HAUTEUR_EXPLOSION_JOUEUR 7
 #define LARGEUR_MECHANT 11
 #define HAUTEUR_MECHANT 8
 #define LARGEUR_TIR_MECHANT 3
@@ -139,7 +141,7 @@ B00001110,B11011100,B11111101,B11111011,B10111011,B10000011,B10110011,B01110000,
 B00001110,B11101110,B01111101,B10011111,B11110011,B11110111,B01110011,B11100000
 };
 
-byte mechantSprites[][2][16] {
+byte mechantSprites[][NOMBRE_STYLE_MECHANT-1][round((ceil(LARGEUR_MECHANT / 8.0) * HAUTEUR_MECHANT))] {
 {{
 B00100000,B10000000,
 B00010001,B00000000,
@@ -198,7 +200,7 @@ B01010001,B01000000
 }}
 };
 
-byte explosion[] {
+byte explosionMechant[] {
 B11000100,B01100000,
 B00110101,B10000000,
 B00000100,B00000000,
@@ -216,6 +218,25 @@ B11111111,B11100000,
 B11111111,B11100000,
 B10111111,B10100000
 };
+
+byte explosionJoueurSprite[][round((ceil(LARGEUR_EXPLOSION_JOUEUR / 8.0) * HAUTEUR_EXPLOSION_JOUEUR))] {
+{
+B00100000,B00000100,
+B10011000,B00011001,
+B00000111,B11100000,
+B01000000,B00000010,
+B10001000,B00010001,
+B00100111,B11100100,
+B00001111,B11110000,
+},{
+B00000000,B00000000,
+B00010000,B00001000,
+B00001001,B10010000,
+B00000000,B00000000,
+B00011001,B10011000,
+B00101001,B10010100,
+B01001111,B11110010,
+}};
 
 byte tirMechantSprite[] {
 B11000000,
@@ -285,10 +306,37 @@ bool seTouchent(byte x1, byte y1, byte largeur1, byte hauteur1, byte x2, byte y2
   return lesCoordonneesXDesRectanglesSeTouchent && lesCoordonneesYDesRectanglesSeTouchent;
 }
 
-void finirJeu(const char * texte) {
-  ecrireEcran(texte, 20, 20, NOIR);
+void animerLaFin(const char* lettre, byte xLettre, byte yLettre, byte animationExplosion) {
+  ecrireEcran(lettre, xLettre, yLettre, NOIR);
+  byte xExplosion = xJoueur + LARGEUR_JOUEUR - LARGEUR_EXPLOSION_JOUEUR / 2; // decale car les largeurs ne sont pas les memes
+  byte yExplosion = yJoueur + HAUTEUR_JOUEUR - HAUTEUR_EXPLOSION_JOUEUR; // decale car les largeurs ne sont pas les memes
+  effacerSprite(explosionJoueurSprite[animationExplosion % 2], LARGEUR_EXPLOSION_JOUEUR, HAUTEUR_EXPLOSION_JOUEUR, xExplosion, yExplosion);
+  dessinerSprite(explosionJoueurSprite[(animationExplosion + 1) % 2], LARGEUR_EXPLOSION_JOUEUR, HAUTEUR_EXPLOSION_JOUEUR, xExplosion, yExplosion);
+  rafraichirEcran();
+  delai(200);
+}
+
+void finirJeu() {
+  byte y = 8;
+
+  effacerSprite(joueurSprite, LARGEUR_JOUEUR, HAUTEUR_JOUEUR, xJoueur, yJoueur);
+  creerRectangle(0, y - 1, LARGEUR_ECRAN, y + 7, true, BLANC);
+
+  animerLaFin("G",  8, y, 0);
+  animerLaFin("A", 16, y, 1);
+  animerLaFin("M", 24, y, 0);
+  animerLaFin("E", 32, y, 1);
+  animerLaFin(" ", 40, y, 0);
+  animerLaFin("O", 48, y, 1);
+  animerLaFin("V", 56, y, 0);
+  animerLaFin("E", 64, y, 1);
+  animerLaFin("R", 70, y, 0);
+
   modeJeu = ECRAN_FIN_DE_JEU;
-  while (touche()); // attend que l'utilisateur lache la touche
+  while (!touche()) { // attend que l'utilisateur appuie sur une touche
+    animerLaFin("", 0, y, 1);
+    animerLaFin("", 0, y, 0);
+  }
 }
 
 void gererCollisions() {
@@ -313,7 +361,7 @@ void gererCollisions() {
 
       if (tirEnCours && seTouchent(xTir, yTir, 1, 1, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT)) {
         effacerSprite(mechantSprites[toStyle(mechant)][modeMechant], LARGEUR_MECHANT, HAUTEUR_MECHANT, toX(mechant), toY(mechant));
-        dessinerSprite(explosion, LARGEUR_MECHANT, HAUTEUR_MECHANT, toX(mechant), toY(mechant));
+        dessinerSprite(explosionMechant, LARGEUR_MECHANT, HAUTEUR_MECHANT, toX(mechant), toY(mechant));
         rafraichirEcran();
         delai(100);
         mechants[i][j] = SPRITE_INACTIF;
@@ -321,7 +369,7 @@ void gererCollisions() {
       }
 
       if (seTouchent(xJoueur, yJoueur, LARGEUR_JOUEUR, HAUTEUR_JOUEUR, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT)) {
-        finirJeu("PERDU :-(");
+        finirJeu();
       }
     }
   }
@@ -331,7 +379,7 @@ void gererCollisions() {
     if (!estActif(tir)) continue;
 
     if (seTouchent(xJoueur, yJoueur, LARGEUR_JOUEUR, HAUTEUR_JOUEUR, toX(tir), toY(tir), LARGEUR_TIR_MECHANT, HAUTEUR_TIR_MECHANT)) {
-      finirJeu("PERDU :-(");
+      finirJeu();
     }
     if (tirEnCours && seTouchent(xTir, yTir, 1, 1, toX(tir), toY(tir), LARGEUR_TIR_MECHANT, HAUTEUR_TIR_MECHANT)) {
       tirsMechants[i] = SPRITE_INACTIF;
@@ -492,9 +540,7 @@ void loop() {
       break;
 
     case ECRAN_FIN_DE_JEU:
-      delai(1000);
-      while (!touche()); // attend que l'utilisateur appuie sur une touche
-      while (touche()); // attend que l'utilisateur lache la touche
+      if (touche()) while (touche()); // attend que l'utilisateur lache la touche
       modeJeu = ECRAN_ACCUEIL;
       break;
 
