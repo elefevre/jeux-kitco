@@ -528,6 +528,12 @@ void loop() {
     case PARTIE:
       effacerEcran(BLANC);
 
+      if (toucheB()) { // pause
+        while (touche()); // attend que l'utilisateur lache la touche
+        while (!touche()); // attend que l'utilisateur appuie sur une touche
+        while (touche()); // attend que l'utilisateur lache la touche
+      }
+
       deplacerMechants();
       deplacerTirs();
       deplacerJoueur();
@@ -535,8 +541,6 @@ void loop() {
       gererCollisions();
     
       rafraichirEcran();
-    
-      delai(10);
       break;
 
     case ECRAN_FIN_DE_JEU:
