@@ -72,6 +72,7 @@ byte xTir = 20;
 byte yTir = 40;
 byte xJoueur = 20;
 byte yJoueur = 43;
+long score = 0;
 char directionMechants = 1;
 long mechants[NOMBRE_MECHANTS_HORIZONTAL][NOMBRE_MECHANTS_VERTICAL];
 long tirsMechants[NOMBRE_TIRS_MECHANTS];
@@ -85,6 +86,7 @@ byte niveau = 1;
 #define DELAI_TIRAGE_BONUS 6
 long unsigned int timings[] = {millis(), millis(), millis(), millis(), millis(), millis(), millis()};
 long unsigned int tempos[] = {1000, 150, 200, 10, 100, 100, 1000};
+long scoreParStyle[] = {30, 20, 10, 100};
 
 
 bool timingExpire(byte index) {
@@ -100,7 +102,7 @@ byte tempo(int valeurDeDepart, int acceleration, byte niveau) {
   return resultat > 0 ? resultat : 0;
 }
 
-void demarrer(byte nouveauNiveau) {
+void demarrer(byte nouveauNiveau, long nouveauScore) {
   niveau = nouveauNiveau;
 
   randomSeed(millis());
@@ -123,6 +125,7 @@ void demarrer(byte nouveauNiveau) {
   yTir = 40;
   xJoueur = 20;
   yJoueur = 43;
+  score = nouveauScore;
   directionMechants = 1;
   for (int i = 0; i < NOMBRE_MECHANTS_HORIZONTAL ; i++) {
     for (int j = 0; j < NOMBRE_MECHANTS_VERTICAL ; j++) {
@@ -277,7 +280,7 @@ B00010000,B00001000,
 
 void ecrireChiffre(long i, byte x, byte y) {
   char buf [6];
-  sprintf (buf, "%03i", i);
+  sprintf (buf, "%04i", i);
   ecrireEcran(buf, x, y, NOIR);
 }
 
@@ -387,7 +390,7 @@ void gererCollisions() {
   }
   if (tousLesMechantsSontMorts) {
       niveau++;
-      demarrer(niveau);
+      demarrer(niveau, score);
       return;
   }
 
@@ -399,6 +402,7 @@ void gererCollisions() {
       if (tirEnCours && seTouchent(xTir, yTir, LARGEUR_TIR_JOUEUR, HAUTEUR_TIR_JOUEUR, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT)) {
         detruireSpriteParUnTir(mechantSprites[toStyle(mechant)][modeMechant], toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT);
         mechants[i][j] = SPRITE_INACTIF;
+        score = score + scoreParStyle[toStyle(mechant)];
       }
 
       if (seTouchent(xJoueur, yJoueur, LARGEUR_JOUEUR, HAUTEUR_JOUEUR, toX(mechant), toY(mechant), LARGEUR_MECHANT, HAUTEUR_MECHANT)) {
@@ -409,6 +413,7 @@ void gererCollisions() {
 
   if (tirEnCours && bonusEnCours && seTouchent(xTir, yTir, LARGEUR_TIR_JOUEUR, HAUTEUR_TIR_JOUEUR, xBonus, yBonus, LARGEUR_MECHANT_BONUS, HAUTEUR_MECHANT_BONUS)) {
     detruireSpriteParUnTir(mechantBonusSprite, xBonus, yBonus, LARGEUR_MECHANT_BONUS, HAUTEUR_MECHANT_BONUS);
+    score = score + scoreParStyle[4];
     bonusEnCours = false;
   }
   
@@ -553,6 +558,7 @@ void dessinerTirs() {
 
 void dessiner() {
   ecrireLettre('0'+niveau%10, 75, 0, NOIR);
+  ecrireChiffre(score, 0, 40);
 
   dessinerMechants();
   dessinerTirs();
@@ -574,14 +580,12 @@ void deplacerJoueur() {
 
 }
 
-byte xTitre = 10;
-byte yTitre = 2;
 void loop() {
   switch (modeJeu) {
     case ECRAN_ACCUEIL:
       if (timingExpire(ANIMATION_MECHANTS)) modeMechant = (modeMechant == 0) ? 1 : 0;
       effacerEcran(BLANC);
-      dessinerSprite(titre, LARGEUR_TITRE, HAUTEUR_TITRE, xTitre, yTitre);
+      dessinerSprite(titre, LARGEUR_TITRE, HAUTEUR_TITRE, 10, 2);
       dessinerMechant(xy(25, 30, 0));
       dessinerMechant(xy(45, 30, 0));
       rafraichirEcran();
@@ -590,7 +594,7 @@ void loop() {
         // pour eviter qu'il tire automatiquement au debut du jeu
         while(touche());
         modeJeu = PARTIE;
-        demarrer(1);
+        demarrer(1, 0);
       }
       break;
 
