@@ -3,14 +3,7 @@
 
 // Nécessaire pour l'environnement Kitco
 #include "kitco.h"
-
-
-// La partie Setup concerne ce qui va être exécuté au démarrage de Kitco
-void setup() {
-  initialiserKitco(0);
-  lcdBegin();
-  setContrast(50);
-}
+#include <EEPROM.h>
 
 #define ECRAN_ACCUEIL 0
 #define PARTIE 1
@@ -88,6 +81,16 @@ long unsigned int timings[] = {millis(), millis(), millis(), millis(), millis(),
 long unsigned int tempos[] = {1000, 150, 200, 10, 100, 100, 1000};
 long scoreParStyle[] = {30, 20, 10, 100};
 
+long record = 0;
+
+// La partie Setup concerne ce qui va être exécuté au démarrage de Kitco
+void setup() {
+  initialiserKitco(0);
+  lcdBegin();
+  setContrast(50);
+
+  record = EEPROM.read(0)+EEPROM.read(1)*255;
+}
 
 bool timingExpire(byte index) {
   if (millis() - timings[index] > tempos[index]) {
@@ -349,6 +352,12 @@ void animerLaFin(const char* lettre, byte xLettre, byte yLettre, byte animationE
 }
 
 void finirJeu() {
+  if (score > record) {
+    record = score;
+    EEPROM.write(0, record % 255);
+    EEPROM.write(1, record / 255);
+  }
+
   byte y = 8;
 
   effacerSprite(joueurSprite, LARGEUR_JOUEUR, HAUTEUR_JOUEUR, xJoueur, yJoueur);
@@ -588,6 +597,9 @@ void loop() {
       dessinerSprite(titre, LARGEUR_TITRE, HAUTEUR_TITRE, 10, 2);
       dessinerMechant(xy(25, 30, 0));
       dessinerMechant(xy(45, 30, 0));
+      ecrireEcran("*", 19, 40, NOIR);
+      ecrireChiffre(record, 28, 40);
+      ecrireEcran("*", 55, 40, NOIR);
       rafraichirEcran();
       if (touche()) {
         // attend que l'utilisateur arrete de presser la touche
