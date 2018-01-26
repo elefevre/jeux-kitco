@@ -92,9 +92,15 @@ void ecrireChiffre2(unsigned int i, byte x, byte y) {
   ecrireEcran(buf, x, y, NOIR);
 }
 
-void debugChiffre(char* txt, float i) {
+void debugChiffre(char* txt, int i) {
   char buf [25];
-  sprintf (buf, "%s: %f", txt, i);
+  sprintf (buf, "%s: %d", txt, i);
+  Serial.println(buf);
+}
+
+void debugJeu(int x, int y) {
+  char buf [25];
+  sprintf (buf, "x: %d, y: %d", x, y);
   Serial.println(buf);
 }
 
@@ -154,17 +160,17 @@ bool estSurLaSurface(byte x, byte y) {
 void deplacer() {
   byte xJoueurPrecedent = xJoueur;
   byte yJoueurPrecedent = yJoueur;
-  debugChiffre("xJoueur", xJoueur);
-  if (toucheGauche()) {
+  debugJeu(xJoueur, yJoueur);
+  if (toucheGauche() && toucheA()) {
     xJoueur = xJoueur - 1;
   }
-  if (toucheDroite()) {
+  if (toucheDroite() && toucheA()) {
     xJoueur = xJoueur + 1;
   }
-  if (toucheHaut()) {
+  if (toucheHaut() && toucheA()) {
     yJoueur = yJoueur - 1;
   }
-  if (toucheBas()) {
+  if (toucheBas() && toucheA()) {
     yJoueur = yJoueur + 1;
   }
 
