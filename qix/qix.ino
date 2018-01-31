@@ -70,12 +70,10 @@ void setup() {
 }
 
 void demarrer() {
-  for (int i = 0; i < HAUTEUR_ECRAN; i++) {
-//    pixels[i * largeurTableau8Bits(LARGEUR_ECRAN)] = B01000000;
-  }
-  for (int i = 0; i < LARGEUR_ECRAN / 8 + 1; i++) {
-    pixels[i + 45 * largeurTableau8Bits(LARGEUR_ECRAN)] = B11111111;
-  }
+  remplirLigne(0, 0, LARGEUR_ECRAN - 1, 0);
+  remplirLigne(0, HAUTEUR_ECRAN - 1, LARGEUR_ECRAN - 1, HAUTEUR_ECRAN - 1);
+  remplirLigne(0, 0, 0, HAUTEUR_ECRAN - 1);
+  remplirLigne(LARGEUR_ECRAN - 1, 0, LARGEUR_ECRAN - 1, HAUTEUR_ECRAN - 1);
 
   barres[0] = {12, 1, -1.0, -1.0, 40, 40, 1.0, 1.0};
 }
@@ -233,19 +231,64 @@ void remplirRectangle(int x0, int y0, int x1, int y1) {
   }
 }
 
-void remplirNouvelleZone() {
+bool pointDansSegmentOrthogonal(byte xPoint, byte yPoint, byte xSegment1, byte ySegment1, byte xSegment2, byte ySegment2) {
+  if (yPoint == ySegment1 && yPoint == ySegment2) {
+    // le point est sur la meme absysse
+    return x >= xSegment1 && x <= xSegment2;
+  }
+  if (xPoint == xSegment1 && xPoint == xSegment2) {
+    // le point est sur la meme ordonnee
+    return y >= ySegment1 && y <= ySegment2;
+  }
+
+  return false;
+}
+
+bool pointSurLeParcours(byte xPoint, byte yPoint) {
+  bool pointSurParcours = false;
+  for (int i = 0; i < longueurParcours - 1; i++) {
+    pointSurParcours = pointSurParcours || pointDansSegmentOrthogonal(x, y, parcours[i].x, parcours[i].y, parcours[i + 1].x, parcours[i + 1].y);
+  }
+
+  return pointSurParcours;
+}
+
+void choisirLaZoneLaPlusPetite() {
   if (longueurParcours <= 2) {
     return;
   }
 
-  Serial.println("remplissons une zone");
+  bool dansLaPartie1 = false;
+  bool pixelPrecedentDansLaZoneCouverte = false;
+  int pixelsDansLaPartie1 = 0;
+  int pixelsDansLaPartie2 = 0;
+  for (int x = 0; x < LARGEUR_ECRAN; x++) {
+    for (int y = 0; y < HAUTEUR_ECRAN; y++) {
+      bool pointSurParcours = pointSurLeParcours(x, y);
+      bool pixelCourantDansLaZoneCouverte = trouverPresencePixel(x, y);
 
-  for (int i = 0; i < longueurParcours; i++) {
-    char buf [25];
-    sprintf (buf, "point %d, x: %d, y: %d", i, parcours[i].x, parcours[i].y);
-    Serial.println(buf);
+      if (pixelPrecedentDansLaZoneCouverte && !pixelCourantDansLaZoneCouverte) {
+        dansLaPartie1 = !dansLaPartie1;
+      }
+
+      if (!pixelCourantDansLaZoneCouverte) {
+        if (dansLaPartie1) {
+          pixelsDansLaPartie1++;
+        } else {
+          pixelsDansLaPartie2++;
+        }
+      }
+
+      pixelPrecedentDansLaZoneCouverte = pixelCourantDansLaZoneCouverte;
+    }
   }
 
+  char buf [25];
+  sprintf (buf, "points dans la partie 1 %d, dans la partie 2 %d", pixelsDansLaPartie1, pixelsDansLaPartie2);
+  Serial.println(buf);
+}
+
+void remplirEnCreantDesRectanglesAChaquePoint() {
   for (int i = 0; i < longueurParcours - 2; i++) {
     byte xMin = 255;
     byte xMax = 0;
@@ -261,7 +304,23 @@ void remplirNouvelleZone() {
 
     remplirRectangle(xMin, yMin, xMax, yMax);
   }
+}
 
+void remplirNouvelleZone() {
+  if (longueurParcours <= 2) {
+    return;
+  }
+
+  Serial.println("remplissons une zone");
+
+  for (int i = 0; i < longueurParcours; i++) {
+    char buf [25];
+    sprintf (buf, "point %d, x: %d, y: %d", i, parcours[i].x, parcours[i].y);
+    Serial.println(buf);
+  }
+
+  remplirEnCreantDesRectanglesAChaquePoint();
+  choisirLaZoneLaPlusPetite();
 }
 
 void deplacer() {
