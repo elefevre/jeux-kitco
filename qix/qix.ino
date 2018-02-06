@@ -58,14 +58,36 @@ byte largeurTableau8Bits(byte largeur) {
 #define NOMBRE_DE_BYTES_POUR_LARGEUR_ECRAN 11
 byte pixels[ NOMBRE_DE_BYTES_POUR_LARGEUR_ECRAN * HAUTEUR_ECRAN ];
 
+void assertEqual(long actual, long expected) {
+  if (actual == expected) return;
+
+  char buf [50];
+  sprintf (buf, "actual value: %d, but expected: %d", actual, expected);
+  Serial.println(buf);  
+  delay(1000 * 60 * 60 * 24);// seemingly block everything
+}
+
+void lancerTests() {
+  Serial.begin(9600);
+  char buf [10];
+  sprintf (buf, "running tests");
+  Serial.println(buf);
+
+  assertEqual(trouverIndexDansPixels(0, 0), 0);
+ 
+  buf [10];
+  sprintf (buf, "tests pass");
+  Serial.println(buf);  
+}
 
 void setup() {
   initialiserKitco(0);
   lcdBegin();
   setContrast(50);
 
+  lancerTests();
+
   demarrer();
-  Serial.begin(9600);
   delay(1000);// Give reader a chance to see the output.
 }
 
@@ -234,11 +256,11 @@ void remplirRectangle(int x0, int y0, int x1, int y1) {
 bool pointDansSegmentOrthogonal(byte xPoint, byte yPoint, byte xSegment1, byte ySegment1, byte xSegment2, byte ySegment2) {
   if (yPoint == ySegment1 && yPoint == ySegment2) {
     // le point est sur la meme absysse
-    return x >= xSegment1 && x <= xSegment2;
+    return xPoint >= xSegment1 && xPoint <= xSegment2;
   }
   if (xPoint == xSegment1 && xPoint == xSegment2) {
     // le point est sur la meme ordonnee
-    return y >= ySegment1 && y <= ySegment2;
+    return yPoint >= ySegment1 && yPoint <= ySegment2;
   }
 
   return false;
@@ -247,7 +269,7 @@ bool pointDansSegmentOrthogonal(byte xPoint, byte yPoint, byte xSegment1, byte y
 bool pointSurLeParcours(byte xPoint, byte yPoint) {
   bool pointSurParcours = false;
   for (int i = 0; i < longueurParcours - 1; i++) {
-    pointSurParcours = pointSurParcours || pointDansSegmentOrthogonal(x, y, parcours[i].x, parcours[i].y, parcours[i + 1].x, parcours[i + 1].y);
+    pointSurParcours = pointSurParcours || pointDansSegmentOrthogonal(xPoint, yPoint, parcours[i].x, parcours[i].y, parcours[i + 1].x, parcours[i + 1].y);
   }
 
   return pointSurParcours;
