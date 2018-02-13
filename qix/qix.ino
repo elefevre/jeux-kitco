@@ -17,10 +17,10 @@ byte yJoueur = 0;
 typedef struct {
   byte x;
   byte y;
-} pointVirage;
+} point;
 
 byte longueurParcours = 0;
-pointVirage parcours[] = {
+point parcours[] = {
   {0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},
   {0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},
   {0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},{0,0},
@@ -30,25 +30,20 @@ pointVirage parcours[] = {
 };
 
 typedef struct {
-  signed int x;
-  signed int y;
+  point coord;
   float directionX;
   float directionY;
-} point;
+} pointEnMouvement;
 
 typedef struct {
-  point point1;
-  point point2;
+  pointEnMouvement point1;
+  pointEnMouvement point2;
 } barre;
 
 barre barres[] = {
-{0, 0, 0, 0, 0, 0, 0, 0},
-{0, 0, 0, 0, 0, 0, 0, 0},
-{0, 0, 0, 0, 0, 0, 0, 0},
-{0, 0, 0, 0, 0, 0, 0, 0},
-{0, 0, 0, 0, 0, 0, 0, 0},
-{0, 0, 0, 0, 0, 0, 0, 0},
-{0, 0, 0, 0, 0, 0, 0, 0},
+{{{0, 0}, 0, 0}, {{0, 0}, 0, 0}},
+{{{0, 0}, 0, 0}, {{0, 0}, 0, 0}},
+{{{0, 0}, 0, 0}, {{0, 0}, 0, 0}},
 };
 
 byte largeurTableau8Bits(byte largeur) {
@@ -69,13 +64,26 @@ void assertEqual(long actual, long expected) {
 
 void lancerTests() {
   Serial.begin(9600);
-  char buf [10];
+  char buf [15];
   sprintf (buf, "running tests");
   Serial.println(buf);
 
   assertEqual(trouverIndexDansPixels(0, 0), 0);
- 
-  buf [10];
+  assertEqual(trouverIndexDansPixels(1, 0), 0);
+  assertEqual(trouverIndexDansPixels(7, 0), 0);
+  assertEqual(trouverIndexDansPixels(8, 0), 1);
+  assertEqual(trouverIndexDansPixels(0, 1), 11);
+  assertEqual(trouverIndexDansPixels(8, 2), 23);
+
+  assertEqual(pointDansSegmentOrthogonal(0, 0, 0, 0, 0, 0), true);
+  assertEqual(pointDansSegmentOrthogonal(0, 1, 0, 0, 0, 0), false);
+  assertEqual(pointDansSegmentOrthogonal(1, 0, 0, 0, 0, 0), false);
+  assertEqual(pointDansSegmentOrthogonal(1, 0, 0, 0, 2, 0), true);
+  assertEqual(pointDansSegmentOrthogonal(0, 1, 0, 0, 0, 2), true);
+  assertEqual(pointDansSegmentOrthogonal(0, 2, 0, 0, 0, 1), false);
+  assertEqual(pointDansSegmentOrthogonal(2, 0, 0, 0, 1, 0), false);
+
+  buf [15];
   sprintf (buf, "tests pass");
   Serial.println(buf);  
 }
@@ -155,8 +163,8 @@ byte trouverCollision(signed int x, signed int y) {
   return PAS_DE_COLLISION;
 }
 
-point gererCollisionSurUnPoint(point p) {
-  byte typeDeCollision = trouverCollision(p.x, p.y);
+pointEnMouvement gererCollisionSurUnPoint(pointEnMouvement p) {
+  byte typeDeCollision = trouverCollision(p.coord.x, p.coord.y);
 
   if (typeDeCollision == COLLISION_VERTICALE) {
      p.directionX = -p.directionX;
@@ -382,16 +390,16 @@ void deplacer() {
   }
 
   for (int i=1; i < NOMBRE_DE_BARRES ; i++) {
-    barres[NOMBRE_DE_BARRES - i].point1.x = barres[NOMBRE_DE_BARRES - i - 1].point1.x;
-    barres[NOMBRE_DE_BARRES - i].point1.y = barres[NOMBRE_DE_BARRES - i - 1].point1.y;
-    barres[NOMBRE_DE_BARRES - i].point2.x = barres[NOMBRE_DE_BARRES - i - 1].point2.x;
-    barres[NOMBRE_DE_BARRES - i].point2.y = barres[NOMBRE_DE_BARRES - i - 1].point2.y;
+    barres[NOMBRE_DE_BARRES - i].point1.coord.x = barres[NOMBRE_DE_BARRES - i - 1].point1.coord.x;
+    barres[NOMBRE_DE_BARRES - i].point1.coord.y = barres[NOMBRE_DE_BARRES - i - 1].point1.coord.y;
+    barres[NOMBRE_DE_BARRES - i].point2.coord.x = barres[NOMBRE_DE_BARRES - i - 1].point2.coord.x;
+    barres[NOMBRE_DE_BARRES - i].point2.coord.y = barres[NOMBRE_DE_BARRES - i - 1].point2.coord.y;
   }
 
-  barres[0].point1.x = barres[0].point1.x + barres[0].point1.directionX;
-  barres[0].point1.y = barres[0].point1.y + barres[0].point1.directionY;
-  barres[0].point2.x = barres[0].point2.x + barres[0].point2.directionX;
-  barres[0].point2.y = barres[0].point2.y + barres[0].point2.directionY;
+  barres[0].point1.coord.x = barres[0].point1.coord.x + barres[0].point1.directionX;
+  barres[0].point1.coord.y = barres[0].point1.coord.y + barres[0].point1.directionY;
+  barres[0].point2.coord.x = barres[0].point2.coord.x + barres[0].point2.directionX;
+  barres[0].point2.coord.y = barres[0].point2.coord.y + barres[0].point2.directionY;
 
   barres[0].point1 = gererCollisionSurUnPoint(barres[0].point1);
   barres[0].point2 = gererCollisionSurUnPoint(barres[0].point2);
@@ -403,7 +411,7 @@ void dessinerJoueur() {
 
 void dessiner() {
   for (int i = 0; i < NOMBRE_DE_BARRES ; i++) {
-    ligneEcran(barres[i].point1.x, barres[i].point1.y, barres[i].point2.x, barres[i].point2.y, NOIR);
+    ligneEcran(barres[i].point1.coord.x, barres[i].point1.coord.y, barres[i].point2.coord.x, barres[i].point2.coord.y, NOIR);
   }
 
   for (int x = 0; x < largeurTableau8Bits(LARGEUR_ECRAN); x++) {
